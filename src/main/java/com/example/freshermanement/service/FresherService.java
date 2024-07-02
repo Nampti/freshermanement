@@ -14,24 +14,30 @@ import java.util.Optional;
 @Service
 public class FresherService {
 
-    @Autowired
-    private FresherRepository fresherRepository;
+   
+    private final FresherRepository fresherRepository;
+    private final UserService userService;
+    private static final String DEFAULT_PASSWORD = "123";
 
     @Autowired
-    private UserService userService;
+    public FresherService(FresherRepository fresherRepository, UserService userService) {
+        this.fresherRepository = fresherRepository;
+        this.userService = userService;
+    }
 
     public List<Fresher> getAllFreshers() {
         return fresherRepository.findAll();
     }
 
     public Fresher addFresher(Fresher fresher) {
-        String username = fresher.getEmail(); 
-        String email = fresher.getEmail();
-        String password = "123"; 
-        User user = userService.createUserWithRole(username, email, password, Role.FRESHER);
+        User user = createUserForFresher(fresher);
         fresher.setUser(user);
-        fresher.calculateAndUpdateFinalAverageScore(); 
+        fresher.calculateAndUpdateFinalAverageScore();
         return fresherRepository.save(fresher);
+    }
+
+    private User createUserForFresher(Fresher fresher) {
+        return userService.createUserWithRole(fresher.getEmail(), fresher.getEmail(), DEFAULT_PASSWORD, Role.FRESHER);
     }
 
     public void deleteFresher(Long id) {
@@ -39,15 +45,20 @@ public class FresherService {
     }
 
     public Fresher updateFresher(Long id, Fresher fresherDetails) {
-        Fresher fresher = fresherRepository.findById(id).orElseThrow(() -> new RuntimeException("Fresher not found"));
+        Fresher fresher = fresherRepository.findById(id)
+                        .orElseThrow(() -> new RuntimeException("Fresher not found for id: " + id));
+        updateFresherDetails(fresher, fresherDetails);
+        return fresherRepository.save(fresher);
+    }
+
+    private void updateFresherDetails(Fresher fresher, Fresher fresherDetails) {
         fresher.setName(fresherDetails.getName());
         fresher.setProgrammingLanguage(fresherDetails.getProgrammingLanguage());
         fresher.setEmail(fresherDetails.getEmail());
         fresher.setProjectScores(fresherDetails.getProjectScores());
         fresher.setUser(fresherDetails.getUser());
         fresher.setCenter(fresherDetails.getCenter());
-        fresher.calculateAndUpdateFinalAverageScore(); 
-        return fresherRepository.save(fresher);
+        fresher.calculateAndUpdateFinalAverageScore();
     }
 
     public Optional<Fresher> getFresherByFresherCode(String fresherCode) {
